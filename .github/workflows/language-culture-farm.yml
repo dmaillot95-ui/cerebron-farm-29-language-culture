@@ -1,0 +1,77 @@
+name: CEREBRON Farm 29 Language Culture
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      question:
+        description: Question or mission
+        required: false
+        default: Analyze language and culture transfer rigorously.
+
+jobs:
+  farm:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        role:
+          - LINGUISTICS_GENERALIST
+          - SYNTAX_MORPHOLOGY_SPECIALIST
+          - SEMANTICS_SPECIALIST
+          - PRAGMATICS_DISCOURSE_SPECIALIST
+          - TRANSLATION_SPECIALIST
+          - SOCIOLINGUISTICS_SPECIALIST
+          - HISTORICAL_LINGUISTICS_SPECIALIST
+          - PHONETICS_PHONOLOGY_SPECIALIST
+          - SEMIOTICS_SPECIALIST
+          - LITERATURE_ANALYST
+          - CULTURAL_HISTORY_ANALYST
+          - ANTHROPOLOGY_SPECIALIST
+          - MEDIA_COMMUNICATION_ANALYST
+          - CROSS_CULTURAL_TRANSFER_ANALYST
+          - LANGUAGE_COGNITION_ANALYST
+          - HERITAGE_PRESERVATION_ANALYST
+          - BIAS_CONTEXT_AUDITOR
+          - RED_TEAM_LANGUAGE_CULTURE
+          - INDEPENDENT_REPLICATOR
+          - OMEGA_LANGUAGE_CULTURE_JUDGE
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run role
+        env:
+          ROLE: ${{ matrix.role }}
+          QUESTION: ${{ github.event.inputs.question || 'Analyze language and culture transfer rigorously.' }}
+        run: python worker.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.role }}
+          path: artifacts/${{ matrix.role }}.json
+
+  omega-fusion:
+    needs: farm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          merge-multiple: true
+          path: gathered
+      - name: Fuse evidence ledger
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          files=sorted(pathlib.Path('gathered').glob('*.json'))
+          data=[json.loads(p.read_text(encoding='utf-8')) for p in files]
+          out={'farm':29,'fusion':'OMEGA','role_count':len(data),'status':'UNREVIEWED_FUSION_OUTPUT','records':data}
+          pathlib.Path('omega-fusion.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps({'role_count':len(data),'status':'fusion-created'}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omega-fusion
+          path: omega-fusion.json
