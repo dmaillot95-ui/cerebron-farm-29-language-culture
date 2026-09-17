@@ -16,35 +16,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        role:
-          - LINGUISTICS_GENERALIST
-          - SYNTAX_MORPHOLOGY_SPECIALIST
-          - SEMANTICS_SPECIALIST
-          - PRAGMATICS_DISCOURSE_SPECIALIST
-          - TRANSLATION_SPECIALIST
-          - SOCIOLINGUISTICS_SPECIALIST
-          - HISTORICAL_LINGUISTICS_SPECIALIST
-          - PHONETICS_PHONOLOGY_SPECIALIST
-          - SEMIOTICS_SPECIALIST
-          - LITERATURE_ANALYST
-          - CULTURAL_HISTORY_ANALYST
-          - ANTHROPOLOGY_SPECIALIST
-          - MEDIA_COMMUNICATION_ANALYST
-          - CROSS_CULTURAL_TRANSFER_ANALYST
-          - LANGUAGE_COGNITION_ANALYST
-          - HERITAGE_PRESERVATION_ANALYST
-          - BIAS_CONTEXT_AUDITOR
-          - RED_TEAM_LANGUAGE_CULTURE
-          - INDEPENDENT_REPLICATOR
-          - OMEGA_LANGUAGE_CULTURE_JUDGE
+        include:
+          - {role: LINGUISTICS_GENERALIST, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: SYNTAX_MORPHOLOGY_SPECIALIST, model: huggingface-projects/gemma-2-9b-it}
+          - {role: SEMANTICS_SPECIALIST, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: PRAGMATICS_DISCOURSE_SPECIALIST, model: huggingface-projects/gemma-2-9b-it}
+          - {role: TRANSLATION_SPECIALIST, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: SOCIOLINGUISTICS_SPECIALIST, model: huggingface-projects/gemma-2-9b-it}
+          - {role: HISTORICAL_LINGUISTICS_SPECIALIST, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: PHONETICS_PHONOLOGY_SPECIALIST, model: huggingface-projects/gemma-2-9b-it}
+          - {role: SEMIOTICS_SPECIALIST, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: LITERATURE_ANALYST, model: huggingface-projects/gemma-2-9b-it}
+          - {role: CULTURAL_HISTORY_ANALYST, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: ANTHROPOLOGY_SPECIALIST, model: huggingface-projects/gemma-2-9b-it}
+          - {role: MEDIA_COMMUNICATION_ANALYST, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: CROSS_CULTURAL_TRANSFER_ANALYST, model: huggingface-projects/gemma-2-9b-it}
+          - {role: LANGUAGE_COGNITION_ANALYST, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: HERITAGE_PRESERVATION_ANALYST, model: huggingface-projects/gemma-2-9b-it}
+          - {role: BIAS_CONTEXT_AUDITOR, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: RED_TEAM_LANGUAGE_CULTURE, model: huggingface-projects/gemma-2-9b-it}
+          - {role: INDEPENDENT_REPLICATOR, model: huggingface-projects/llama-3.2-3B-Instruct}
+          - {role: OMEGA_LANGUAGE_CULTURE_JUDGE, model: huggingface-projects/gemma-2-9b-it}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
+      - run: pip install -q hf-gradio
       - name: Run role
         env:
           ROLE: ${{ matrix.role }}
+          MODEL: ${{ matrix.model }}
           QUESTION: ${{ github.event.inputs.question || 'Analyze language and culture transfer rigorously.' }}
         run: python worker.py
       - uses: actions/upload-artifact@v4
@@ -54,6 +56,7 @@ jobs:
 
   omega-fusion:
     needs: farm
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -64,12 +67,15 @@ jobs:
       - name: Fuse evidence ledger
         run: |
           python - <<'PY'
-          import json, pathlib
-          files=sorted(pathlib.Path('gathered').glob('*.json'))
-          data=[json.loads(p.read_text(encoding='utf-8')) for p in files]
-          out={'farm':29,'fusion':'OMEGA','role_count':len(data),'status':'UNREVIEWED_FUSION_OUTPUT','records':data}
+          import json,pathlib
+          rows=[]
+          for p in pathlib.Path('gathered').glob('*.json'):
+              try: rows.append(json.loads(p.read_text(encoding='utf-8')))
+              except Exception: pass
+          ok=sum(bool(r.get('inference_success')) for r in rows)
+          out={'farm':29,'fusion':'OMEGA','roles_returned':len(rows),'successful_external_ai_calls':ok,'failed_external_ai_calls':len(rows)-ok,'model_families':sorted(set(r.get('model','') for r in rows if r.get('model'))),'status':'UNREVIEWED_EXTERNAL_AGENT_OUTPUT','records':rows}
           pathlib.Path('omega-fusion.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
-          print(json.dumps({'role_count':len(data),'status':'fusion-created'}))
+          print(json.dumps({k:out[k] for k in ('roles_returned','successful_external_ai_calls','failed_external_ai_calls','model_families','status')}))
           PY
       - uses: actions/upload-artifact@v4
         with:
